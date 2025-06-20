@@ -1,0 +1,164 @@
+    <% layout('/layouts/boilerplate') %>
+    <div id="map" style="height: 500px; width: 100%;" class="mb-4 rounded shadow"></div>
+
+<!-- MapTiler & Supercluster -->
+<link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.css" rel="stylesheet">
+<script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.umd.min.js"></script>
+<script src="https://unpkg.com/supercluster@7.1.4/dist/supercluster.min.js"></script>
+
+<script>
+  const maptiler = window.maptilersdk;
+  maptiler.config.apiKey = "<%= mapTilerApiKey %>";
+
+  const map = new maptiler.Map({
+    container: 'map',
+    style: maptiler.MapStyle.STREETS,
+    center: [<%= campgrounds[0].geometry.coordinates[0] %>, <%= campgrounds[0].geometry.coordinates[1] %>],
+    zoom: 3
+  });
+
+  // Convert campgrounds into GeoJSON
+  const geojson = {
+    type: "FeatureCollection",
+    features: [
+      <% for (let c of campgrounds) { 
+        if (!c.geometry) continue; 
+      %>
+        {
+          type: "Feature",
+          properties: {
+            title: "<%- c.title %>",
+            id: "<%- c._id %>",
+            location: "<%- c.location %>"
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [<%= c.geometry.coordinates[0] %>, <%= c.geometry.coordinates[1] %>]
+          }
+        },
+      <% } %>
+    ]
+  };
+
+  // Add navigation control (zoom + rotation)
+map.addControl(new maptiler.NavigationControl(), 'top-right');
+
+// Add fullscreen control
+map.addControl(new maptiler.FullscreenControl(), 'top-right');
+
+// Optional: Add geolocate control (shows user location)
+map.addControl(new maptiler.GeolocateControl({
+  positionOptions: {
+    enableHighAccuracy: true
+  },
+  trackUserLocation: true
+}), 'top-right');
+
+// Optional: Scale bar
+map.addControl(new maptiler.ScaleControl({
+  maxWidth: 100,
+  unit: 'metric'
+}));
+  map.on('load', () => {
+    map.addSource('campgrounds', {
+      type: 'geojson',
+      data: geojson,
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 50
+    });
+
+    // Cluster circles
+    map.addLayer({
+      id: 'clusters',
+      type: 'circle',
+      source: 'campgrounds',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': '#51bbd6',
+        'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 30, 25]
+      }
+    });
+
+    // Cluster labels
+    map.addLayer({
+      id: 'cluster-count',
+      type: 'symbol',
+      source: 'campgrounds',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': '{point_count_abbreviated}',
+        'text-font': ['Open Sans Bold'],
+        'text-size': 12
+      }
+    });
+
+    // Individual points
+    map.addLayer({
+      id: 'unclustered-point',
+      type: 'circle',
+      source: 'campgrounds',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': '#f28cb1',
+        'circle-radius': 6
+      }
+    });
+
+    // Popups
+    map.on('click', 'unclustered-point', (e) => {
+      const coords = e.features[0].geometry.coordinates;
+      const props = e.features[0].properties;
+
+      new maptiler.Popup()
+        .setLngLat(coords)
+        .setHTML(`<strong><a href="/campgrounds/${props.id}">${props.title}</a></strong><br>${props.location}`)
+        .addTo(map);
+    });
+
+    // Zoom into cluster
+    map.on('click', 'clusters', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+      const clusterId = features[0].properties.cluster_id;
+      map.getSource('campgrounds').getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err) return;
+        map.easeTo({
+          center: features[0].geometry.coordinates,
+          zoom: zoom
+        });
+      });
+    });
+
+    // Cursor
+    map.on('mouseenter', 'clusters', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseleave', 'clusters', () => map.getCanvas().style.cursor = '');
+  });
+</script>
+    <h1>All Campgrounds</h1>
+    <div>
+        <a href="/campgrounds/new">New campground</a>
+    </div>
+        <% for(let Campground of campgrounds) {%>
+            <div class="card mb-3" >
+                <div class="row">
+                    <%if(Campground.images.length){%>
+                    <div class="col-md-4">
+                        <img src="<%= Campground.images[0].url %>" alt="" class="img-fluid">
+                    </div>
+                    <%}%>
+                    <div class="col-md-8">
+                        <div class="card-body">
+                            <h5 class="card-title"><%= Campground.title %></h5>
+                            <p class="card-text"><%= Campground.description %></p>
+                            <p class="cart-text">
+                                <small class="text-muted">
+                                    <%= Campground.location %>
+                                </small>
+                            </p>
+                            <a href="/campgrounds/<%= Campground._id %>" class="btn btn-primary"><%= Campground.title %></a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <% } %>

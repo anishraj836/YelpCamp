@@ -1,0 +1,50 @@
+# Node modules
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# dotenv environment file
+.env
+
+# OS-specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# macOS Finder metadata
+._*
+
+# macOS thumbnail cache
+**/.DocumentRevisions-V100/
+**/.fseventsd/
+**/.Spotlight-V100/
+**/.TemporaryItems/
+**/.Trashes
+**/.VolumeIcon.icns
+
+# IDE/editor folders
+.vscode/
+.idea/
+
+# Coverage reports
+coverage/
+
+# Build or uploads (optional, depending on your app)
+uploads/
+dist/
+build/
+
+# Local database dumps or SQLite files
+*.sqlite
+*.db
