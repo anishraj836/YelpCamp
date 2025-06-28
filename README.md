@@ -3,7 +3,7 @@
 YelpCamp is a full-stack campground listing web application where users can create, view, review, and manage campgrounds.
 
 ## 🌐 Live Demo
-<!-- Optionally add your live deployment link here -->
+Hosted on [Render](https://yelpcamp-wvq6.onrender.com/)
 
 ## 📷 Features
 - User authentication and registration (Passport.js)
