@@ -16,12 +16,28 @@
                 <input type="file" name="image" id="image" multiple>
             </div>
             <div class="mb-3">
-                <label class="form-label" for="location">location</label>
+                <label class="form-label" for="location">Location</label>
                 <input class="form-control" type="text" name="Campground[location]" id="location" value="<%= Campground.location %>" required>
                 <div class="valid-feedback">
                     Looks good
                 </div>
             </div>
+            
+            <!-- Interactive Map for Location Selection -->
+            <div class="mb-3">
+                <label class="form-label">Update Location on Map</label>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="form-text text-muted">Click on the map to place a new marker for your campground location</small>
+                    <button type="button" id="getLocationBtn" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-geo-alt"></i> Use My Location
+                    </button>
+                </div>
+                <div id="locationMap" style="height: 400px; width: 100%; border: 2px solid #ccc; border-radius: 5px;"></div>
+                <input type="hidden" name="Campground[geometry][coordinates][0]" id="longitude" value="<%= Campground.geometry ? Campground.geometry.coordinates[0] : '' %>" required>
+                <input type="hidden" name="Campground[geometry][coordinates][1]" id="latitude" value="<%= Campground.geometry ? Campground.geometry.coordinates[1] : '' %>" required>
+                <input type="hidden" name="Campground[geometry][type]" value="Point">
+            </div>
+            
             <div class="mb-3">
                 <label class="form-label" for="price">Campground price</label>
                 <div class="input-group">
@@ -53,3 +69,116 @@
         <a  href="/campgrounds">Back to all Campgrounds</a>
     </div>
 </div>
+
+<!-- MapTiler SDK -->
+<script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.umd.min.js"></script>
+<link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.css" rel="stylesheet">
+
+<script>
+    const maptiler = window.maptilersdk;
+    maptiler.config.apiKey = "<%= process.env.MAPTILER_API_KEY %>";
+
+    // Get current coordinates or default to NYC
+    const currentLng = <%= Campground.geometry ? Campground.geometry.coordinates[0] : -74.006 %>;
+    const currentLat = <%= Campground.geometry ? Campground.geometry.coordinates[1] : 40.7128 %>;
+
+    const map = new maptiler.Map({
+        container: 'locationMap',
+        style: maptiler.MapStyle.STREETS,
+        center: [currentLng, currentLat],
+        zoom: 10
+    });
+
+    let marker = null;
+
+    // Add existing marker if coordinates exist
+    <% if (Campground.geometry) { %>
+    marker = new maptiler.Marker({ color: '#FF0000' })
+        .setLngLat([currentLng, currentLat])
+        .addTo(map);
+    <% } %>
+
+    // Geolocation functionality
+    document.getElementById('getLocationBtn').addEventListener('click', () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { longitude, latitude } = position.coords;
+                    
+                    // Center map on user's location
+                    map.flyTo({
+                        center: [longitude, latitude],
+                        zoom: 12
+                    });
+                    
+                    // Add marker at user's location
+                    if (marker) {
+                        marker.remove();
+                    }
+                    
+                    marker = new maptiler.Marker({ color: '#FF0000' })
+                        .setLngLat([longitude, latitude])
+                        .addTo(map);
+                    
+                    // Update form fields
+                    document.getElementById('longitude').value = longitude;
+                    document.getElementById('latitude').value = latitude;
+                    
+                    // Reverse geocode to get location name
+                    fetch(`https://api.maptiler.com/geocoding/${longitude},${latitude}.json?key=${maptiler.config.apiKey}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.features && data.features.length > 0) {
+                                const locationName = data.features[0].place_name;
+                                document.getElementById('location').value = locationName;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error reverse geocoding:', error);
+                        });
+                },
+                (error) => {
+                    console.error('Error getting location:', error);
+                    alert('Unable to get your location. Please select manually on the map.');
+                }
+            );
+        } else {
+            alert('Geolocation is not supported by this browser.');
+        }
+    });
+
+    map.on('click', (e) => {
+        const { lng, lat } = e.lngLat;
+        
+        // Remove existing marker if any
+        if (marker) {
+            marker.remove();
+        }
+        
+        // Add new marker
+        marker = new maptiler.Marker({ color: '#FF0000' })
+            .setLngLat([lng, lat])
+            .addTo(map);
+        
+        // Update hidden form fields
+        document.getElementById('longitude').value = lng;
+        document.getElementById('latitude').value = lat;
+        
+        // Reverse geocode to get location name
+        fetch(`https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${maptiler.config.apiKey}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    const locationName = data.features[0].place_name;
+                    document.getElementById('location').value = locationName;
+                }
+            })
+            .catch(error => {
+                console.error('Error reverse geocoding:', error);
+            });
+    });
+
+    // Add navigation controls
+    map.addControl(new maptiler.NavigationControl(), 'top-right');
+    map.addControl(new maptiler.FullscreenControl(), 'top-right');
+</script>

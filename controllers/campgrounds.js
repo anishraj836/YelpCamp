@@ -19,12 +19,28 @@ module.exports.renderNewForm = (req,res)=>{
 }
 module.exports.createCampgrounds = async (req,res,next)=>{
     // if(!req.body.Campground) throw new ExpressError('Invalid Campground data', 400);
-    const geoData = await maptilerClient.geocoding.forward(
-        req.body.Campground.location, 
-        { limit: 1 }
-    );
+    
+    // Use coordinates from map marker instead of geocoding
     const Campground = new campground(req.body.Campground);
-    Campground.geometry = geoData.features[0].geometry;
+    
+    // Set geometry from form coordinates (from map marker)
+    if (req.body.Campground.geometry && req.body.Campground.geometry.coordinates) {
+        Campground.geometry = {
+            type: 'Point',
+            coordinates: [
+                parseFloat(req.body.Campground.geometry.coordinates[0]),
+                parseFloat(req.body.Campground.geometry.coordinates[1])
+            ]
+        };
+    } else {
+        // Fallback to geocoding if no coordinates provided
+        const geoData = await maptilerClient.geocoding.forward(
+            req.body.Campground.location, 
+            { limit: 1 }
+        );
+        Campground.geometry = geoData.features[0].geometry;
+    }
+    
     Campground.images = req.files.map(f=>({url: f.path, filename: f.filename}));
     Campground.author = req.user._id;
     await Campground.save();
@@ -58,6 +74,18 @@ module.exports.renderEdit = async (req,res)=>{
 module.exports.updateCampground = async (req,res)=>{
     const {id} = req.params;
     const Campground = await campground.findByIdAndUpdate(id,{...req.body.Campground},{new:true});
+    
+    // Update geometry if coordinates are provided
+    if (req.body.Campground.geometry && req.body.Campground.geometry.coordinates) {
+        Campground.geometry = {
+            type: 'Point',
+            coordinates: [
+                parseFloat(req.body.Campground.geometry.coordinates[0]),
+                parseFloat(req.body.Campground.geometry.coordinates[1])
+            ]
+        };
+    }
+    
     const images = req.files.map(f=>({url: f.path, filename: f.filename}));
     Campground.images.push(...images);
     await Campground.save();
