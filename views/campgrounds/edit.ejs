@@ -2,129 +2,127 @@
 <div class="row">
     <h1 class="text-center">Edit Campground</h1>
     <div class="col-6 offset-3">
-        <form action="/campgrounds/<%=Campground._id%>?_method=PUT" method="POST" novalidate class="validated-form" 
-            enctype="multipart/form-data">
+        <form action="/campgrounds/<%= Campground._id %>?_method=PUT" method="POST" novalidate class="validated-form" enctype="multipart/form-data">
             <div class="mb-3">
                 <label class="form-label" for="title">Title</label>
                 <input class="form-control" type="text" name="Campground[title]" id="title" value="<%= Campground.title %>" required>
-                <div class="valid-feedback">
-                    Looks good
-                </div>
+                <div class="valid-feedback">Looks good</div>
             </div>
+
             <div class="mb-3">
-                <label class="form-label" for="image">Add images</label>
-                <input type="file" name="image" id="image" multiple>
+                <label class="form-label" for="image">Add Images</label>
+                <input class="form-control" type="file" id="image" name="image" multiple>
+                <small id="file-label" class="form-text text-muted">No files chosen</small>
             </div>
+
+            <script>
+                const input = document.getElementById('image');
+                const fileLabel = document.getElementById('file-label');
+                input.addEventListener('change', () => {
+                    const files = [...input.files].map(f => f.name).join(', ');
+                    fileLabel.textContent = files || 'No files chosen';
+                });
+            </script>
+
             <div class="mb-3">
                 <label class="form-label" for="location">Location</label>
                 <input class="form-control" type="text" name="Campground[location]" id="location" value="<%= Campground.location %>" required>
-                <div class="valid-feedback">
-                    Looks good
-                </div>
+                <div class="valid-feedback">Looks good</div>
             </div>
-            
-            <!-- Interactive Map for Location Selection -->
+
+            <!-- Interactive Map -->
             <div class="mb-3">
-                <label class="form-label">Update Location on Map</label>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <small class="form-text text-muted">Click on the map to place a new marker for your campground location</small>
-                    <button type="button" id="getLocationBtn" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-geo-alt"></i> Use My Location
-                    </button>
-                </div>
-                <div id="locationMap" style="height: 400px; width: 100%; border: 2px solid #ccc; border-radius: 5px;"></div>
-                <input type="hidden" name="Campground[geometry][coordinates][0]" id="longitude" value="<%= Campground.geometry ? Campground.geometry.coordinates[0] : '' %>" required>
-                <input type="hidden" name="Campground[geometry][coordinates][1]" id="latitude" value="<%= Campground.geometry ? Campground.geometry.coordinates[1] : '' %>" required>
-                <input type="hidden" name="Campground[geometry][type]" value="Point">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label" for="price">Campground price</label>
-                <div class="input-group">
-                    <span class="input-group-text" id="basic-addon1" id="price-label">$</span>
-                    <input name="Campground[price]" id="price" type="text" class="form-control" placeholder="0$" aria-describedby="price-label" value="<%= Campground.price %>" required>
-                    <div class="valid-feedback">
-                        Looks good
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Current Location</label>
+                        <div id="currentLocationMap" style="height: 400px; width: 100%; border: 2px solid #ccc; border-radius: 5px;"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Set New Location on Map</label>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="form-text text-muted">Click on the map to place a new marker for your campground location</small>
+                            <button type="button" id="getLocationBtn" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-geo-alt"></i> Use My Location
+                            </button>
+                        </div>
+                        <div id="locationMap" style="height: 400px; width: 100%; border: 2px solid #ccc; border-radius: 5px;"></div>
+                        <input type="hidden" name="Campground[geometry][coordinates][0]" id="longitude" value="<%= Campground.geometry ? Campground.geometry.coordinates[0] : '' %>" required>
+                        <input type="hidden" name="Campground[geometry][coordinates][1]" id="latitude" value="<%= Campground.geometry ? Campground.geometry.coordinates[1] : '' %>" required>
+                        <input type="hidden" name="Campground[geometry][type]" value="Point">
                     </div>
                 </div>
             </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="price">Price</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input class="form-control" type="text" id="price" name="Campground[price]" value="<%= Campground.price %>" required>
+                    <div class="valid-feedback">Looks good</div>
+                </div>
+            </div>
+
             <div class="mb-3">
                 <label class="form-label" for="description">Description</label>
                 <textarea class="form-control" name="Campground[description]" id="description" required><%= Campground.description %></textarea>
-                <div class="valid-feedback">
-                    Looks good
-                </div>
+                <div class="valid-feedback">Looks good</div>
             </div>
-            <div class="mb-3" width = 100%>
-                <% Campground.images.forEach(function (img,i) {%>
-                    <p></p>
-                    <input type="checkbox" name="deleteImages[]" value="<%= img.filename %>" >
-                    <img id="image-<%= i %>" class="img-thumbnail mb-2 me-2" style="max-width: 150px;" src="<%= img.thumbnail %>" alt="">
-                    <label for="image-<%= i %>">Delete?</label>
-                <%}) %>
+
+            <!-- Existing Images with Delete Option -->
+            <div class="mb-3">
+                <% Campground.images.forEach(function(img, i) { %>
+                    <div class="form-check d-inline-block me-3 mb-2 text-center">
+                        <input class="form-check-input" type="checkbox" name="deleteImages[]" value="<%= img.filename %>" id="delete-<%= i %>">
+                        <label class="form-check-label d-block" for="delete-<%= i %>">
+                            <img src="<%= img.thumbnail %>" class="img-thumbnail" style="max-width: 150px;" alt="Image <%= i + 1 %>"><br>
+                            Delete
+                        </label>
+                    </div>
+                <% }); %>
             </div>
+
             <button class="btn btn-success mb-3">Save Changes</button>
         </form>
-        
-        <a  href="/campgrounds">Back to all Campgrounds</a>
+        <a href="/campgrounds">Back to all Campgrounds</a>
     </div>
 </div>
 
-<!-- MapTiler SDK -->
-<script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.umd.min.js"></script>
-<link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.3/maptiler-sdk.css" rel="stylesheet">
-
+<% const currentLng = Campground.geometry ? Campground.geometry.coordinates[0] : -74.006; %>
+<% const currentLat = Campground.geometry ? Campground.geometry.coordinates[1] : 40.7128; %>
 <script>
     const maptiler = window.maptilersdk;
     maptiler.config.apiKey = "<%= mapTilerApiKey %>";
-
-    // Get current coordinates or default to NYC
-    const currentLng = <%= Campground.geometry ? Campground.geometry.coordinates[0] : -74.006 %>;
-    const currentLat = <%= Campground.geometry ? Campground.geometry.coordinates[1] : 40.7128 %>;
-
+    // Current location map (readonly)
+    const currentMap = new maptiler.Map({
+        container: 'currentLocationMap',
+        style: maptiler.MapStyle.STREETS,
+        center: [<%= currentLng %>, <%= currentLat %>],
+        zoom: 10,
+        interactive: false
+    });
+    new maptiler.Marker({ color: '#FF0000' })
+        .setLngLat([<%= currentLng %>, <%= currentLat %>])
+        .addTo(currentMap);
+    // Interactive map for new location (EXACTLY like new.ejs)
     const map = new maptiler.Map({
         container: 'locationMap',
         style: maptiler.MapStyle.STREETS,
-        center: [currentLng, currentLat],
+        center: [-74.006, 40.7128], // Default to NYC, just like new.ejs
         zoom: 10
     });
-
     let marker = null;
-
-    // Add existing marker if coordinates exist
-    <% if (Campground.geometry) { %>
-    marker = new maptiler.Marker({ color: '#FF0000' })
-        .setLngLat([currentLng, currentLat])
-        .addTo(map);
-    <% } %>
-
-    // Geolocation functionality
     document.getElementById('getLocationBtn').addEventListener('click', () => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const { longitude, latitude } = position.coords;
-                    
-                    // Center map on user's location
-                    map.flyTo({
-                        center: [longitude, latitude],
-                        zoom: 12
-                    });
-                    
-                    // Add marker at user's location
-                    if (marker) {
-                        marker.remove();
-                    }
-                    
+                    map.flyTo({ center: [longitude, latitude], zoom: 12 });
+                    if (marker) marker.remove();
                     marker = new maptiler.Marker({ color: '#FF0000' })
                         .setLngLat([longitude, latitude])
                         .addTo(map);
-                    
-                    // Update form fields
                     document.getElementById('longitude').value = longitude;
                     document.getElementById('latitude').value = latitude;
-                    
-                    // Reverse geocode to get location name
                     fetch(`https://api.maptiler.com/geocoding/${longitude},${latitude}.json?key=${maptiler.config.apiKey}`)
                         .then(response => response.json())
                         .then(data => {
@@ -146,25 +144,14 @@
             alert('Geolocation is not supported by this browser.');
         }
     });
-
     map.on('click', (e) => {
         const { lng, lat } = e.lngLat;
-        
-        // Remove existing marker if any
-        if (marker) {
-            marker.remove();
-        }
-        
-        // Add new marker
+        if (marker) marker.remove();
         marker = new maptiler.Marker({ color: '#FF0000' })
             .setLngLat([lng, lat])
             .addTo(map);
-        
-        // Update hidden form fields
         document.getElementById('longitude').value = lng;
         document.getElementById('latitude').value = lat;
-        
-        // Reverse geocode to get location name
         fetch(`https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${maptiler.config.apiKey}`)
             .then(response => response.json())
             .then(data => {
@@ -177,8 +164,41 @@
                 console.error('Error reverse geocoding:', error);
             });
     });
-
-    // Add navigation controls
     map.addControl(new maptiler.NavigationControl(), 'top-right');
     map.addControl(new maptiler.FullscreenControl(), 'top-right');
+
+    document.querySelector('form').addEventListener('submit', function(e) {
+        if (!document.getElementById('longitude').value || !document.getElementById('latitude').value) {
+            e.preventDefault();
+            alert('Please select a location on the map!');
+        }
+    });
+
+    // --- Live geocoding on location input ---
+    const locationInput = document.getElementById('location');
+    let debounceTimeout = null;
+    locationInput.addEventListener('input', function() {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            const query = locationInput.value.trim();
+            if (!query) return;
+            fetch(`https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${maptiler.config.apiKey}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.features && data.features.length > 0) {
+                        const [lng, lat] = data.features[0].center;
+                        // Update marker and map
+                        if (marker) marker.remove();
+                        marker = new maptiler.Marker({ color: '#FF0000' })
+                            .setLngLat([lng, lat])
+                            .addTo(map);
+                        map.setCenter([lng, lat]);
+                        map.setZoom(12);
+                        // Update hidden coordinate fields
+                        document.getElementById('longitude').value = lng;
+                        document.getElementById('latitude').value = lat;
+                    }
+                });
+        }, 200); // Debounce: 500ms after user stops typing
+    });
 </script>

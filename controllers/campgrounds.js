@@ -20,6 +20,21 @@ module.exports.renderNewForm = (req,res)=>{
 module.exports.createCampgrounds = async (req,res,next)=>{
     // if(!req.body.Campground) throw new ExpressError('Invalid Campground data', 400);
     
+    // Add this before any Joi validation (e.g., in createCampgrounds and updateCampground):
+    if (
+      req.body.Campground &&
+      req.body.Campground.geometry &&
+      req.body.Campground.geometry.coordinates &&
+      typeof req.body.Campground.geometry.coordinates === 'object' &&
+      !Array.isArray(req.body.Campground.geometry.coordinates)
+    ) {
+      const coordsObj = req.body.Campground.geometry.coordinates;
+      req.body.Campground.geometry.coordinates = [
+        parseFloat(coordsObj[0]),
+        parseFloat(coordsObj[1])
+      ];
+    }
+    
     // Use coordinates from map marker instead of geocoding
     const Campground = new campground(req.body.Campground);
     
@@ -73,19 +88,37 @@ module.exports.renderEdit = async (req,res)=>{
 };
 module.exports.updateCampground = async (req,res)=>{
     const {id} = req.params;
-    const Campground = await campground.findByIdAndUpdate(id,{...req.body.Campground},{new:true});
-    
-    // Update geometry if coordinates are provided
-    if (req.body.Campground.geometry && req.body.Campground.geometry.coordinates) {
-        Campground.geometry = {
-            type: 'Point',
-            coordinates: [
-                parseFloat(req.body.Campground.geometry.coordinates[0]),
-                parseFloat(req.body.Campground.geometry.coordinates[1])
-            ]
-        };
+    // Ensure coordinates are an array if present (already handled by middleware)
+    let geometry = null;
+    if (
+      req.body.Campground &&
+      req.body.Campground.geometry &&
+      Array.isArray(req.body.Campground.geometry.coordinates) &&
+      req.body.Campground.geometry.coordinates.length === 2 &&
+      !isNaN(req.body.Campground.geometry.coordinates[0]) &&
+      !isNaN(req.body.Campground.geometry.coordinates[1])
+    ) {
+      geometry = {
+        type: 'Point',
+        coordinates: [
+          parseFloat(req.body.Campground.geometry.coordinates[0]),
+          parseFloat(req.body.Campground.geometry.coordinates[1])
+        ]
+      };
+    } else {
+      // Fallback: use reverse geocoding from location string
+      const geoData = await maptilerClient.geocoding.forward(
+        req.body.Campground.location,
+        { limit: 1 }
+      );
+      if (geoData && geoData.features && geoData.features[0] && geoData.features[0].geometry) {
+        geometry = geoData.features[0].geometry;
+      }
     }
-    
+    const Campground = await campground.findByIdAndUpdate(id,{...req.body.Campground},{new:true});
+    if (geometry) {
+      Campground.geometry = geometry;
+    }
     const images = req.files.map(f=>({url: f.path, filename: f.filename}));
     Campground.images.push(...images);
     await Campground.save();

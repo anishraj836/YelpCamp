@@ -184,4 +184,32 @@
     // Add navigation controls
     map.addControl(new maptiler.NavigationControl(), 'top-right');
     map.addControl(new maptiler.FullscreenControl(), 'top-right');
+
+    // --- Live geocoding on location input ---
+    const locationInput = document.getElementById('location');
+    let debounceTimeout = null;
+    locationInput.addEventListener('input', function() {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            const query = locationInput.value.trim();
+            if (!query) return;
+            fetch(`https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?key=${maptiler.config.apiKey}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.features && data.features.length > 0) {
+                        const [lng, lat] = data.features[0].center;
+                        // Update marker and map
+                        if (marker) marker.remove();
+                        marker = new maptiler.Marker({ color: '#FF0000' })
+                            .setLngLat([lng, lat])
+                            .addTo(map);
+                        map.setCenter([lng, lat]);
+                        map.setZoom(12);
+                        // Update hidden coordinate fields
+                        document.getElementById('longitude').value = lng;
+                        document.getElementById('latitude').value = lat;
+                    }
+                });
+        }, 200); // Debounce: 200ms after user stops typing
+    });
 </script>
