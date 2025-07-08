@@ -76,7 +76,7 @@
 
 <script>
     const maptiler = window.maptilersdk;
-    maptiler.config.apiKey = "<%= process.env.MAPTILER_API_KEY %>";
+    maptiler.config.apiKey = "<%= mapTilerApiKey %>";
 
     // Get current coordinates or default to NYC
     const currentLng = <%= Campground.geometry ? Campground.geometry.coordinates[0] : -74.006 %>;
