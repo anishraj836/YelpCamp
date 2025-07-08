@@ -69,7 +69,7 @@ module.exports.renderEdit = async (req,res)=>{
         return res.redirect('/campgrounds');
     }
     else
-    res.render('campgrounds/edit', {Campground});
+    res.render('campgrounds/edit', {Campground, mapTilerApiKey: process.env.MAPTILER_API_KEY});
 };
 module.exports.updateCampground = async (req,res)=>{
     const {id} = req.params;
